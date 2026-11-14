@@ -40,6 +40,29 @@
 # two runs byte-identical; outputs valid (exact market set, 240 rows,
 # 5 non-decreasing numbers in [0,1]).
 #
+# Design notes (why this shape, and what was tried and rejected).
+#
+# The final is four thin, news-driven markets at low prices (0.006-0.043),
+# so the model is built to be safe there rather than tuned to the practice:
+#   * No mean reversion. Pulling toward the trailing mean, toward the
+#     cross-sectional level, or a level-OLS drift was tested hard on the
+#     practice data and rejected: all of them make the loss much worse
+#     (up to 0.55). Persistence plus the two small drifts is what survives.
+#   * No sum-to-one pull (see above): the FAA sum is ~0.10, not ~1.
+#   * No asymmetric spread. Widening the upside and narrowing the downside
+#     (down 0.7 / up 1.3, down 0.5 / up 1.5, and milder pairs) was tested
+#     on the practice data and every variant is worse (0.267-0.279 vs
+#     0.264593 symmetric), so the symmetric Laplace stays.
+#   * No raised sigma cap. Raising the cap from 0.01 to 0.02/0.03/0.05 was
+#     tested and every step is worse on practice (0.268-0.273), so the
+#     validated 0.01 cap stays even though the final markets jump: wide
+#     spreads pay at every quiet minute, and quiet minutes dominate.
+#   * The empirical blend stays at 10%: heavier weights were tested and
+#     are worse (the empirical shape is noisy), and a flat 6-hour window
+#     sd and a term-structure sd are both worse than the EWMA.
+#   * The down-continuation drift is one-sided on purpose: falls continue,
+#     rises revert, so only the down side is used (validated on practice).
+#
 # The program is deterministic: only sorting and arithmetic, no randomness,
 # no network, no clock. It reads $MAKEFUN_INPUT_DIR (else /input) and writes
 # $MAKEFUN_OUTPUT_DIR (else /output), one <id>.out per <id>.in, in name order.
