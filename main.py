@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # polymarket-faa-attribution-02 entry (Python 3.13, standard library only).
 #
 # Forecast the Yes price of every market of Polymarket's FAA outage
@@ -82,6 +81,8 @@ EWMA_HALF_LIFE = 30
 MOMENTUM_K = 0.1
 MOMENTUM_WINDOW = 30
 # Sum-coherence correction: shrink toward x/S, ramping over this many minutes.
+# OFF for this bounty (SUM_NORM = 0.0): the FAA family's four attributions
+# are mutually exclusive but not exhaustive, so the sum is not anchored at 1.
 SUM_NORM = 0.0
 SUM_RAMP_MINUTES = 120
 
@@ -202,7 +203,9 @@ def forecast_case(case):
             if drift0:
                 row = [v + drift0 * math.sqrt(h / MOMENTUM_WINDOW) for v in row]
             # Sum coherence: shift the whole row toward x / S, ramping in
-            # over the first SUM_RAMP_MINUTES minutes.
+            # over the first SUM_RAMP_MINUTES minutes. With SUM_NORM = 0.0
+            # the shift is zero (off for this bounty); the code stays so
+            # the mechanism is visible and re-enabling it is one constant.
             if s0 > 0:
                 gf = min(1.0, h / SUM_RAMP_MINUTES)
                 shift = x * (1.0 / s0 - 1.0) * SUM_NORM * gf
@@ -222,6 +225,8 @@ def main():
     out_dir = Path(OUTPUT_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
     inputs = sorted(p for p in in_dir.iterdir() if p.name.endswith(".in"))
+    if not inputs:
+        raise ValueError(f"no .in case files in {in_dir}")
     for path in inputs:
         case_id = path.name[: -len(".in")]
         with open(path, "r", encoding="utf-8") as f:
